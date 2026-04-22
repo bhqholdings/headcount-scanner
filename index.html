@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: 'Russo One', sans-serif;
+    background: #0a0a0a; 
+    color: #ffffff; 
+    padding: 16px;
+    min-height: 100vh;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+  .scanner-title {
+    text-align: center;
+    font-size: 22px;
+    color: #CC0000;
+    text-shadow: 0 0 10px rgba(204,0,0,0.5);
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+  }
+  .camera-area {
+    width: 100%;
+    aspect-ratio: 1;
+    background: #1a1a1a;
+    border: 2px dashed #CC0000;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .camera-area img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+  }
+  .camera-placeholder {
+    text-align: center;
+    color: #666;
+  }
+  .camera-placeholder .icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+  .camera-placeholder p {
+    font-size: 14px;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-bottom: 10px;
+    font-family: 'Russo One', sans-serif;
+  }
+  .btn-camera {
+    background: #CC0000;
+    color: white;
+  }
+  .btn-scan {
+    background: #ffffff;
+    color: #CC0000;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .status {
+    text-align: center;
+    font-size: 14px;
+    color: #999;
+    margin: 10px 0;
+    min-height: 20px;
+  }
+  .status.loading { color: #CC0000; }
+  .status.success { color: #00CC66; }
+  .status.error { color: #ff4444; }
+  .detected-labels {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .detected-labels h3 {
+    font-size: 13px;
+    color: #CC0000;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .label-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .label-tag {
+    background: #2a2a2a;
+    color: #ccc;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid #444;
+  }
+  .results-section { display: none; }
+  .results-title {
+    font-size: 16px;
+    color: #CC0000;
+    margin-bottom: 12px;
+    text-shadow: 0 0 8px rgba(204,0,0,0.4);
+  }
+  .result-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .result-card img {
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #222;
+    flex-shrink: 0;
+  }
+  .result-info h4 {
+    font-size: 15px;
+    color: #ffffff;
+    margin-bottom: 4px;
+  }
+  .result-info p {
+    font-size: 12px;
+    color: #999;
+    line-height: 1.4;
+  }
+  .result-info .team {
+    color: #CC0000;
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .no-results {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+    font-size: 14px;
+  }
+  .hidden { display: none; }
+  #fileInput { display: none; }
+</style>
+</head>
+<body>
+
+<p class="scanner-title">📸 SCAN A BOBBLE</p>
+
+<div class="camera-area" id="cameraArea">
+  <div class="camera-placeholder" id="placeholder">
+    <div class="icon">🎯</div>
+    <p>Tap below to scan<br>your bobblehead</p>
+  </div>
+  <img id="previewImg" class="hidden" alt="Bobblehead preview">
+</div>
+
+<input type="file" id="fileInput" accept="image/*" capture="environment">
+
+<button class="btn btn-camera" onclick="document.getElementById('fileInput').click()">
+  📷 Take Photo / Upload
+</button>
+
+<button class="btn btn-scan" id="scanBtn" disabled onclick="scanImage()">
+  🔍 Identify Bobblehead
+</button>
+
+<div class="status" id="status"></div>
+
+<div class="detected-labels" id="detectedLabels">
+  <h3>🔎 Detected</h3>
+  <div class="label-tags" id="labelTags"></div>
+</div>
+
+<div class="results-section" id="resultsSection">
+  <p class="results-title">⚾ Matching Bobbleheads</p>
+  <div id="resultsList"></div>
+</div>
+
+<script>
+  const VISION_API_KEY = AIzaSyC6ykMTILmKpHxqinSoHYReV6yDqXsLR7A;
+  const SHEETS_ID = 1nRw7vyRvjlNyql8enePCHL3EplS62ei2XBiTgigX5ek;
+  const SHEET_NAME = 'Master List';
+
+  let base64Image = '';
+
+  document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const result = event.target.result;
+      base64Image = result.split(',')[1];
+      
+      const img = document.getElementById('previewImg');
+      img.src = result;
+      img.classList.remove('hidden');
+      document.getElementById('placeholder').classList.add('hidden');
+      
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('status').textContent = 'Photo ready — tap Identify!';
+      document.getElementById('status').className = 'status success';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  async function scanImage() {
+    if (!base64Image) return;
+    
+    const scanBtn = document.getElementById('scanBtn');
+    const status = document.getElementById('status');
+    
+    scanBtn.disabled = true;
+    status.textContent = '🔍 Analyzing image...';
+    status.className = 'status loading';
+    
+    document.getElementById('detectedLabels').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    try {
+      const visionResponse = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requests: [{
+              image: { content: base64Image },
+              features: [
+                { type: 'LABEL_DETECTION', maxResults: 15 },
+                { type: 'TEXT_DETECTION', maxResults: 10 },
+                { type: 'LOGO_DETECTION', maxResults: 5 }
+              ]
+            }]
+          })
+        }
+      );
+
+      const visionData = await visionResponse.json();
+      
+      if (!visionData.responses || !visionData.responses[0]) {
+        throw new Error('No response from Vision API');
+      }
+
+      const response = visionData.responses[0];
+      const labels = (response.labelAnnotations || []).map(l => l.description.toLowerCase());
+      const texts = (response.textAnnotations || []).map(t => t.description.toLowerCase());
+      const logos = (response.logoAnnotations || []).map(l => l.description.toLowerCase());
+      
+      const allDetected = [...new Set([...labels, ...logos])];
+      const allText = texts.join(' ');
+      
+      // Show detected labels
+      const labelTags = document.getElementById('labelTags');
+      labelTags.innerHTML = allDetected.slice(0, 10).map(l => 
+        `<span class="label-tag">${l}</span>`
+      ).join('');
+      document.getElementById('detectedLabels').style.display = 'block';
+
+      status.textContent = '✅ Searching database...';
+      
+      // Search Google Sheets
+      await searchDatabase(allDetected, allText);
+      
+    } catch(err) {
+      status.textContent = '❌ Error: ' + err.message;
+      status.className = 'status error';
+      scanBtn.disabled = false;
+    }
+  }
+
+  async function searchDatabase(labels, detectedText) {
+    const status = document.getElementById('status');
+    
+    try {
+      const sheetsUrl = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+      const sheetsResponse = await fetch(sheetsUrl);
+      const text = await sheetsResponse.text();
+      const json = JSON.parse(text.substring(47).slice(0, -2));
+      
+      const headers = json.table.cols.map(c => c.label.toLowerCase());
+      const rows = json.table.rows.map(row => {
+        const obj = {};
+        headers.forEach((h, i) => {
+          obj[h] = row.c[i] ? (row.c[i].v || '') : '';
+        });
+        return obj;
+      });
+
+      // Score each row based on matches
+      const scored = rows.map(row => {
+        let score = 0;
+        const rowText = Object.values(row).join(' ').toLowerCase();
+        
+        labels.forEach(label => {
+          if (rowText.includes(label)) score += 2;
+        });
+        
+        if (detectedText) {
+          const words = detectedText.split(/\s+/).filter(w => w.length > 3);
+          words.forEach(word => {
+            if (rowText.includes(word)) score += 3;
+          });
+        }
+        
+        return { ...row, score };
+      });
+
+      const matches = scored
+        .filter(r => r.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      displayResults(matches);
+      
+      status.textContent = matches.length > 0 
+        ? `✅ Found ${matches.length} match${matches.length > 1 ? 'es' : ''}!`
+        : '🤔 No matches found — try a clearer photo';
+      status.className = matches.length > 0 ? 'status success' : 'status';
+      
+    } catch(err) {
+      status.textContent = '❌ Database error: ' + err.message;
+      status.className = 'status error';
+    }
+    
+    document.getElementById('scanBtn').disabled = false;
+  }
+
+  function displayResults(matches) {
+    const resultsList = document.getElementById('resultsList');
+    const resultsSection = document.getElementById('resultsSection');
+    
+    if (!matches.length) {
+      resultsList.innerHTML = '<div class="no-results">No matching bobbleheads found.<br>Try a clearer photo or different angle.</div>';
+      resultsSection.style.display = 'block';
+      return;
+    }
+
+    resultsList.innerHTML = matches.map(m => `
+      <div class="result-card">
+        <img src="${m['image_url'] || ''}" 
+             onerror="this.style.display='none'"
+             alt="${m['event'] || 'Bobblehead'}">
+        <div class="result-info">
+          <h4>${m['event'] || 'Unknown'}</h4>
+          <p class="team">${m['team'] || ''}</p>
+          <p>${m['affiliate'] || ''} ${m['date'] ? '• ' + m['date'] : ''}</p>
+          <p>${m['theme'] ? 'Theme: ' + m['theme'] : ''}</p>
+        </div>
+      </div>
+    `).join('');
+    
+    resultsSection.style.display = 'block';
+  }
+</script>
+</body>
+</html>
