@@ -359,7 +359,7 @@
       return '<div class="result-card">' +
         '<img src="' + (m['image_url'] || '') + '" onerror="this.style.display=\'none\'" alt="Bobblehead">' +
         '<div class="result-info">' +
-        '<h4>' + (m['event'] || 'Unknown') + '</h4>' +
+        '<h4>' + (m['item / event'] || m['event'] || m['item/event'] || 'Unknown') + '</h4>' +
         '<p class="team">' + (m['team'] || '') + '</p>' +
         '<p>' + (m['affiliate'] || '') + (m['date'] ? ' • ' + m['date'] : '') + '</p>' +
         '<p>' + (m['theme'] ? 'Theme: ' + m['theme'] : '') + '</p>' +
