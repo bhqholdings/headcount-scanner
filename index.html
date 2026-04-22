@@ -154,6 +154,20 @@
     font-weight: 800;
     font-size: 13px;
   }
+  .result-card {
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .result-card:hover, .result-card:active {
+    transform: scale(1.02);
+    border-color: #CC0000;
+  }
+  .result-card .tap-hint {
+    font-size: 11px;
+    color: #CC0000;
+    margin-top: 6px;
+    font-weight: 800;
+  }
   .no-results {
     text-align: center;
     color: #666;
@@ -176,11 +190,15 @@
   <img id="previewImg" class="hidden" alt="Bobblehead preview">
 </div>
 
-<input type="file" id="fileInput" accept="image/*" capture="environment">
+<input type="file" id="fileInput" accept="image/*">
 
 <button class="btn btn-camera" onclick="document.getElementById('fileInput').click()">
   📷 Take Photo / Upload
 </button>
+<button class="btn btn-camera" style="background:#880000;margin-top:-5px;" onclick="openCamera()">
+  📸 Use Camera
+</button>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
 
 <button class="btn btn-scan" id="scanBtn" disabled onclick="scanImage()">
   🔍 Identify Bobblehead
@@ -205,25 +223,33 @@
 
   let base64Image = '';
 
-  document.getElementById('fileInput').addEventListener('change', function(e) {
-    const file = e.target.files[0];
+  function openCamera() {
+    document.getElementById('cameraInput').click();
+  }
+
+  function handleImageFile(file) {
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = function(event) {
       const result = event.target.result;
       base64Image = result.split(',')[1];
-      
       const img = document.getElementById('previewImg');
       img.src = result;
       img.classList.remove('hidden');
       document.getElementById('placeholder').classList.add('hidden');
-      
       document.getElementById('scanBtn').disabled = false;
       document.getElementById('status').textContent = 'Photo ready — tap Identify!';
       document.getElementById('status').className = 'status success';
     };
     reader.readAsDataURL(file);
+  }
+
+  document.getElementById('fileInput').addEventListener('change', function(e) {
+    handleImageFile(e.target.files[0]);
+  });
+
+  document.getElementById('cameraInput').addEventListener('change', function(e) {
+    handleImageFile(e.target.files[0]);
   });
 
   async function scanImage() {
@@ -379,6 +405,12 @@
     }
     
     document.getElementById('scanBtn').disabled = false;
+  }
+
+  function openInApp(searchTerm) {
+    // Open Glide app with search term pre-filled
+    var appUrl = 'https://ad-count-7vfx.glide.page';
+    window.open(appUrl, '_blank');
   }
 
   function displayResults(matches) {
