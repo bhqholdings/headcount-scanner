@@ -276,7 +276,11 @@
       const allText = texts.join(' ');
       
       const labelTags = document.getElementById('labelTags');
-      labelTags.innerHTML = allDetected.slice(0, 10).map(function(l) {
+      const displayItems = allDetected.slice(0, 10);
+      // Also show first detected text words
+      const textWords = texts.length > 0 ? texts[0].split('\n').filter(function(w) { return w.length > 2; }).slice(0, 5) : [];
+      const allDisplay = displayItems.concat(textWords.map(function(w) { return '📝 ' + w; }));
+      labelTags.innerHTML = allDisplay.map(function(l) {
         return '<span class="label-tag">' + l + '</span>';
       }).join('');
       document.getElementById('detectedLabels').style.display = 'block';
