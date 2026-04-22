@@ -318,7 +318,7 @@
       labelTags.innerHTML = allDisplay.map(function(l) {
         return '<span class="label-tag">' + l + '</span>';
       }).join('');
-      document.getElementById('detectedLabels').style.display = 'block';
+      // detected labels hidden
 
       status.textContent = 'Searching database...';
       
@@ -388,7 +388,7 @@
       });
 
       const matches = scored
-        .filter(function(r) { return r.score > 0; })
+        .filter(function(r) { return r.score > 15; })
         .sort(function(a, b) { return b.score - a.score; })
         .slice(0, 5);
 
