@@ -251,7 +251,9 @@
               features: [
                 { type: 'LABEL_DETECTION', maxResults: 15 },
                 { type: 'TEXT_DETECTION', maxResults: 10 },
-                { type: 'LOGO_DETECTION', maxResults: 5 }
+                { type: 'LOGO_DETECTION', maxResults: 5 },
+                { type: 'WEB_DETECTION', maxResults: 10 },
+                { type: 'CROP_HINTS' }
               ]
             }]
           })
@@ -269,8 +271,15 @@
       const texts = (response.textAnnotations || []).map(function(t) { return t.description.toLowerCase(); });
       const logos = (response.logoAnnotations || []).map(function(l) { return l.description.toLowerCase(); });
       
+      // Web Detection - most powerful for bobblehead identification
+      const webDetection = response.webDetection || {};
+      const webEntities = (webDetection.webEntities || []).map(function(e) { return (e.description || '').toLowerCase(); });
+      const webLabels = (webDetection.bestGuessLabels || []).map(function(l) { return (l.label || '').toLowerCase(); });
+      const webAll = webEntities.concat(webLabels);
+      console.log('WEB DETECTED:', webAll);
+      
       const blacklist = ['toy', 'figurine', 'collectable', 'collectible', 'product', 'plastic', 'statue', 'doll', 'action figure', 'material property', 'fictional character', 'art', 'font', 'games'];
-      const allDetected = labels.concat(logos).filter(function(v, i, a) { 
+      const allDetected = labels.concat(logos).concat(webAll).filter(function(v, i, a) { 
         return a.indexOf(v) === i && !blacklist.includes(v); 
       });
       const allText = texts.join(' ');
@@ -287,7 +296,7 @@
 
       status.textContent = 'Searching database...';
       
-      await searchDatabase(allDetected, allText);
+      await searchDatabase(allDetected, allText, webAll);
       
     } catch(err) {
       status.textContent = 'Error: ' + err.message;
@@ -296,7 +305,8 @@
     }
   }
 
-  async function searchDatabase(labels, detectedText) {
+  async function searchDatabase(labels, detectedText, webAll) {
+    webAll = webAll || [];
     const status = document.getElementById('status');
     
     try {
@@ -323,13 +333,21 @@
         const affiliateName = (row['affiliate'] || '').toLowerCase();
         const rowText = [teamName, eventName, themeName, affiliateName].join(' ');
 
+        // Web detection scoring - highest weight
+        webAll.forEach(function(webTerm) {
+          if (teamName.includes(webTerm) || webTerm.includes(teamName)) score += 40;
+          if (eventName.includes(webTerm) || webTerm.includes(eventName.split(' ')[0])) score += 35;
+          if (affiliateName.includes(webTerm) || webTerm.includes(affiliateName)) score += 25;
+          if (themeName.includes(webTerm)) score += 20;
+        });
+
         if (detectedText) {
           const words = detectedText.split(/\s+/).filter(function(w) { return w.length > 2; });
           words.forEach(function(word) {
-            if (teamName.includes(word)) score += 10;
-            if (eventName.includes(word)) score += 8;
-            if (affiliateName.includes(word)) score += 6;
-            if (themeName.includes(word)) score += 4;
+            if (teamName.includes(word)) score += 30;
+            if (eventName.includes(word)) score += 25;
+            if (affiliateName.includes(word)) score += 20;
+            if (themeName.includes(word)) score += 15;
           });
         }
 
