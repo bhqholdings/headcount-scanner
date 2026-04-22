@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { 
@@ -12,7 +14,6 @@
     padding: 16px;
     min-height: 100vh;
   }
-  @import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
   .scanner-title {
     text-align: center;
     font-size: 22px;
@@ -240,7 +241,7 @@
 
     try {
       const visionResponse = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
+        'https://vision.googleapis.com/v1/images:annotate?key=' + VISION_API_KEY,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -264,27 +265,25 @@
       }
 
       const response = visionData.responses[0];
-      const labels = (response.labelAnnotations || []).map(l => l.description.toLowerCase());
-      const texts = (response.textAnnotations || []).map(t => t.description.toLowerCase());
-      const logos = (response.logoAnnotations || []).map(l => l.description.toLowerCase());
+      const labels = (response.labelAnnotations || []).map(function(l) { return l.description.toLowerCase(); });
+      const texts = (response.textAnnotations || []).map(function(t) { return t.description.toLowerCase(); });
+      const logos = (response.logoAnnotations || []).map(function(l) { return l.description.toLowerCase(); });
       
-      const allDetected = [...new Set([...labels, ...logos])];
+      const allDetected = labels.concat(logos).filter(function(v, i, a) { return a.indexOf(v) === i; });
       const allText = texts.join(' ');
       
-      // Show detected labels
       const labelTags = document.getElementById('labelTags');
-      labelTags.innerHTML = allDetected.slice(0, 10).map(l => 
-        `<span class="label-tag">${l}</span>`
-      ).join('');
+      labelTags.innerHTML = allDetected.slice(0, 10).map(function(l) {
+        return '<span class="label-tag">' + l + '</span>';
+      }).join('');
       document.getElementById('detectedLabels').style.display = 'block';
 
-      status.textContent = '✅ Searching database...';
+      status.textContent = 'Searching database...';
       
-      // Search Google Sheets
       await searchDatabase(allDetected, allText);
       
     } catch(err) {
-      status.textContent = '❌ Error: ' + err.message;
+      status.textContent = 'Error: ' + err.message;
       status.className = 'status error';
       scanBtn.disabled = false;
     }
@@ -294,53 +293,52 @@
     const status = document.getElementById('status');
     
     try {
-      const sheetsUrl = `https://docs.google.com/spreadsheets/d/${SHEETS_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+      const sheetsUrl = 'https://docs.google.com/spreadsheets/d/' + SHEETS_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(SHEET_NAME);
       const sheetsResponse = await fetch(sheetsUrl);
       const text = await sheetsResponse.text();
       const json = JSON.parse(text.substring(47).slice(0, -2));
       
-      const headers = json.table.cols.map(c => c.label.toLowerCase());
-      const rows = json.table.rows.map(row => {
+      const headers = json.table.cols.map(function(c) { return c.label.toLowerCase(); });
+      const rows = json.table.rows.map(function(row) {
         const obj = {};
-        headers.forEach((h, i) => {
+        headers.forEach(function(h, i) {
           obj[h] = row.c[i] ? (row.c[i].v || '') : '';
         });
         return obj;
       });
 
-      // Score each row based on matches
-      const scored = rows.map(row => {
+      const scored = rows.map(function(row) {
         let score = 0;
         const rowText = Object.values(row).join(' ').toLowerCase();
         
-        labels.forEach(label => {
+        labels.forEach(function(label) {
           if (rowText.includes(label)) score += 2;
         });
         
         if (detectedText) {
-          const words = detectedText.split(/\s+/).filter(w => w.length > 3);
-          words.forEach(word => {
+          const words = detectedText.split(/\s+/).filter(function(w) { return w.length > 3; });
+          words.forEach(function(word) {
             if (rowText.includes(word)) score += 3;
           });
         }
         
-        return { ...row, score };
+        return Object.assign({}, row, { score: score });
       });
 
       const matches = scored
-        .filter(r => r.score > 0)
-        .sort((a, b) => b.score - a.score)
+        .filter(function(r) { return r.score > 0; })
+        .sort(function(a, b) { return b.score - a.score; })
         .slice(0, 5);
 
       displayResults(matches);
       
       status.textContent = matches.length > 0 
-        ? `✅ Found ${matches.length} match${matches.length > 1 ? 'es' : ''}!`
-        : '🤔 No matches found — try a clearer photo';
+        ? 'Found ' + matches.length + ' match' + (matches.length > 1 ? 'es' : '') + '!'
+        : 'No matches found — try a clearer photo';
       status.className = matches.length > 0 ? 'status success' : 'status';
       
     } catch(err) {
-      status.textContent = '❌ Database error: ' + err.message;
+      status.textContent = 'Database error: ' + err.message;
       status.className = 'status error';
     }
     
@@ -357,19 +355,16 @@
       return;
     }
 
-    resultsList.innerHTML = matches.map(m => `
-      <div class="result-card">
-        <img src="${m['image_url'] || ''}" 
-             onerror="this.style.display='none'"
-             alt="${m['event'] || 'Bobblehead'}">
-        <div class="result-info">
-          <h4>${m['event'] || 'Unknown'}</h4>
-          <p class="team">${m['team'] || ''}</p>
-          <p>${m['affiliate'] || ''} ${m['date'] ? '• ' + m['date'] : ''}</p>
-          <p>${m['theme'] ? 'Theme: ' + m['theme'] : ''}</p>
-        </div>
-      </div>
-    `).join('');
+    resultsList.innerHTML = matches.map(function(m) {
+      return '<div class="result-card">' +
+        '<img src="' + (m['image_url'] || '') + '" onerror="this.style.display=\'none\'" alt="Bobblehead">' +
+        '<div class="result-info">' +
+        '<h4>' + (m['event'] || 'Unknown') + '</h4>' +
+        '<p class="team">' + (m['team'] || '') + '</p>' +
+        '<p>' + (m['affiliate'] || '') + (m['date'] ? ' • ' + m['date'] : '') + '</p>' +
+        '<p>' + (m['theme'] ? 'Theme: ' + m['theme'] : '') + '</p>' +
+        '</div></div>';
+    }).join('');
     
     resultsSection.style.display = 'block';
   }
