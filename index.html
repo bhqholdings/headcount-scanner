@@ -269,7 +269,10 @@
       const texts = (response.textAnnotations || []).map(function(t) { return t.description.toLowerCase(); });
       const logos = (response.logoAnnotations || []).map(function(l) { return l.description.toLowerCase(); });
       
-      const allDetected = labels.concat(logos).filter(function(v, i, a) { return a.indexOf(v) === i; });
+      const blacklist = ['toy', 'figurine', 'collectable', 'collectible', 'product', 'plastic', 'statue', 'doll', 'action figure', 'material property', 'fictional character', 'art', 'font', 'games'];
+      const allDetected = labels.concat(logos).filter(function(v, i, a) { 
+        return a.indexOf(v) === i && !blacklist.includes(v); 
+      });
       const allText = texts.join(' ');
       
       const labelTags = document.getElementById('labelTags');
@@ -299,6 +302,7 @@
       const json = JSON.parse(text.substring(47).slice(0, -2));
       
       const headers = json.table.cols.map(function(c) { return c.label.toLowerCase(); });
+      console.log('HEADERS:', headers);
       const rows = json.table.rows.map(function(row) {
         const obj = {};
         headers.forEach(function(h, i) {
@@ -309,18 +313,28 @@
 
       const scored = rows.map(function(row) {
         let score = 0;
-        const rowText = Object.values(row).join(' ').toLowerCase();
-        
-        labels.forEach(function(label) {
-          if (rowText.includes(label)) score += 2;
-        });
-        
+        const teamName = (row['team'] || '').toLowerCase();
+        const eventName = (row['item / event'] || '').toLowerCase();
+        const themeName = (row['theme'] || '').toLowerCase();
+        const affiliateName = (row['affiliate'] || '').toLowerCase();
+        const rowText = [teamName, eventName, themeName, affiliateName].join(' ');
+
         if (detectedText) {
-          const words = detectedText.split(/\s+/).filter(function(w) { return w.length > 3; });
+          const words = detectedText.split(/\s+/).filter(function(w) { return w.length > 2; });
           words.forEach(function(word) {
-            if (rowText.includes(word)) score += 3;
+            if (teamName.includes(word)) score += 10;
+            if (eventName.includes(word)) score += 8;
+            if (affiliateName.includes(word)) score += 6;
+            if (themeName.includes(word)) score += 4;
           });
         }
+
+        labels.forEach(function(label) {
+          if (rowText.includes(label)) score += 2;
+          if (label === 'baseball' && (teamName || affiliateName)) score += 3;
+          if (label === 'basketball' && row['sport'] === 'Basketball') score += 3;
+          if (label === 'hockey' && row['sport'] === 'Hockey') score += 3;
+        });
         
         return Object.assign({}, row, { score: score });
       });
