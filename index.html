@@ -217,8 +217,8 @@
 </div>
 
 <script>
-  const VISION_API_KEY = "AIzaSyC6ykMTILmKpHxqinSoHYReV6yDqXsLR7A";
-  const SHEETS_ID = "1nRw7vyRvjlNyql8enePCHL3EplS62ei2XBiTgigX5ek";
+  const VISION_API_KEY = "YOUR_VISION_API_KEY_HERE";
+  const SHEETS_ID = "YOUR_SHEETS_ID_HERE";
   const SHEET_NAME = "Master List";
 
   let base64Image = '';
@@ -313,7 +313,7 @@
       const labelTags = document.getElementById('labelTags');
       const displayItems = allDetected.slice(0, 10);
       // Also show first detected text words
-      const textWords = texts.length > 0 ? texts[0].split('\n').filter(function(w) { return w.length > 2; }).slice(0, 5) : [];
+      const textWords = texts.length > 0 ? texts[0].split('\n').filter(function(w) { return w.length > 3; }).slice(0, 5) : [];
       const allDisplay = displayItems.concat(textWords.map(function(w) { return '📝 ' + w; }));
       labelTags.innerHTML = allDisplay.map(function(l) {
         return '<span class="label-tag">' + l + '</span>';
@@ -368,7 +368,7 @@
         });
 
         if (detectedText) {
-          const words = detectedText.split(/\s+/).filter(function(w) { return w.length > 2; });
+          const words = detectedText.split(/\s+/).filter(function(w) { return w.length > 3; });
           words.forEach(function(word) {
             if (teamName.includes(word)) score += 30;
             if (eventName.includes(word)) score += 25;
@@ -407,6 +407,17 @@
     document.getElementById('scanBtn').disabled = false;
   }
 
+  function formatDate(dateVal) {
+    if (!dateVal) return '';
+    // Handle Date(2017,2,3) format from Google Sheets
+    var match = String(dateVal).match(/Date\((\d+),(\d+),(\d+)\)/);
+    if (match) {
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return months[parseInt(match[2])] + ' ' + match[3] + ', ' + match[1];
+    }
+    return dateVal;
+  }
+
   function openInApp(searchTerm) {
     // Open Glide app with search term pre-filled
     var appUrl = 'https://ad-count-7vfx.glide.page';
@@ -429,7 +440,7 @@
         '<div class="result-info">' +
         '<h4>' + (m['item / event'] || m['event'] || m['item/event'] || 'Unknown') + '</h4>' +
         '<p class="team">' + (m['team'] || '') + '</p>' +
-        '<p>' + (m['affiliate'] || '') + (m['date'] ? ' • ' + m['date'] : '') + '</p>' +
+        '<p>' + (m['affiliate'] || '') + (m['date'] ? ' • ' + formatDate(m['date']) : '') + '</p>' +
         '<p>' + (m['theme'] ? 'Theme: ' + m['theme'] : '') + '</p>' +
         '</div></div>';
     }).join('');
